@@ -4,3 +4,7 @@ version = "0.1.0"
 authors = ["Simon Walker <s.r.walker101@googlemail.com>"]
 
 [dependencies]
+hyper = "0.9.6"
+rustc-serialize = "0.3.19"
+chrono = "0.2.22"
+sqlite = "0.21.2"
