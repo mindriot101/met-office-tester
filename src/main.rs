@@ -1,18 +1,18 @@
-#![allow(dead_code)]
-
 extern crate hyper;
 extern crate rustc_serialize;
 extern crate chrono;
-extern crate sqlite;
 extern crate docopt;
+extern crate libtempmonitor;
 
-use std::io::Read;
-use hyper::Client;
 use rustc_serialize::json;
-use std::fs::File;
 use chrono::*;
 use std::env;
 use docopt::Docopt;
+
+use libtempmonitor::database::Database;
+use libtempmonitor::data_source::FetchData;
+use libtempmonitor::data_source::json::JsonSource;
+use libtempmonitor::data_source::file::FileSource;
 
 const USAGE: &'static str = "
 Usage:
@@ -31,47 +31,6 @@ struct Args {
     flag_recreate: bool,
 }
 
-struct Database {
-    connection: sqlite::Connection,
-}
-
-impl Database {
-    fn new(path: &str) -> Database {
-        Database { connection: sqlite::open(path).unwrap() }
-    }
-
-    fn insert(&mut self, dt: &DateTime<UTC>, temperature: &i64, upload_time: &DateTime<UTC>) {
-        let mut statement = self.connection
-            .prepare("insert into predictions (dt, temperature, upload_time)
-            values (?, ?, ?)")
-            .unwrap();
-        statement.bind(1, dt.timestamp()).unwrap();
-        statement.bind(2, *temperature).unwrap();
-        statement.bind(3, upload_time.timestamp()).unwrap();
-        loop {
-            match statement.next() {
-                Ok(sqlite::State::Done) => break,
-                _ => (),
-            }
-        }
-    }
-
-    fn drop_tables(&mut self) {
-        self.connection.execute("drop table if exists predictions").unwrap();
-    }
-
-    fn create_tables(&mut self) {
-        self.connection
-            .execute("create table if not exists predictions (
-                id integer primary key,
-                dt timestamp not null,
-                temperature integer not null,
-                upload_time timestamp not null
-            )")
-            .unwrap();
-    }
-}
-
 fn timestamp_to_dt(timestamp: &str) -> ParseResult<DateTime<UTC>> {
     let timestamp = format!("{} 00:00:00", timestamp);
     UTC.datetime_from_str(&timestamp, "%Y-%m-%dZ %H:%M:%S")
@@ -80,22 +39,12 @@ fn timestamp_to_dt(timestamp: &str) -> ParseResult<DateTime<UTC>> {
 fn fetch_json_response() -> String {
     let api_key = env::var("API_KEY").unwrap();
     let location_id = env::var("LOCATION_ID").unwrap();
-    let client = Client::new();
-    let url = format!("http://datapoint.metoffice.gov.\
-     uk/public/data/val/wxfcs/all/json/{location_id}?res=3hourly&key={api_key}",
-                      location_id = location_id,
-                      api_key = api_key);
-    let mut response = client.get(url.as_str()).send().expect("Error sending request");
-    let mut buf = String::new();
-    response.read_to_string(&mut buf).expect("Error reading response string");
-    buf
+    JsonSource::new(api_key, location_id).data()
 }
 
 fn fetch_local_response() -> String {
-    let mut f = File::open("testdata/response.json").unwrap();
-    let mut buf = String::new();
-    f.read_to_string(&mut buf).expect("Cannot read file");
-    buf
+    let filename = "testdata/response.json";
+    FileSource::new(&filename).data()
 }
 
 fn main() {

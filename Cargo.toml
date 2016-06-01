@@ -3,6 +3,14 @@ name = "tempmonitor"
 version = "0.1.0"
 authors = ["Simon Walker <s.r.walker101@googlemail.com>"]
 
+[lib]
+name = "libtempmonitor"
+path = "src/lib.rs"
+
+[[bin]]
+name = "tempmonitor"
+path = "src/main.rs"
+
 [dependencies]
 hyper = "0.9.6"
 rustc-serialize = "0.3.19"
