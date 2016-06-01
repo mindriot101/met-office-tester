@@ -72,7 +72,7 @@ fn fetch_json_response() -> String {
 }
 
 fn fetch_local_response() -> String {
-    let mut f = File::open("/tmp/response.txt").unwrap();
+    let mut f = File::open("testdata/response.json").unwrap();
     let mut buf = String::new();
     f.read_to_string(&mut buf).expect("Cannot read file");
     buf
