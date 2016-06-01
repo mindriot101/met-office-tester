@@ -21,13 +21,14 @@ impl Database {
         Database { connection: sqlite::open(path).unwrap() }
     }
 
-    fn insert(&mut self, dt: &DateTime<UTC>, temperature: &i64) {
+    fn insert(&mut self, dt: &DateTime<UTC>, temperature: &i64, upload_time: &DateTime<UTC>) {
         let mut statement = self.connection
-            .prepare("insert into predictions (dt, temperature)
-            values (?, ?)")
+            .prepare("insert into predictions (dt, temperature, upload_time)
+            values (?, ?, ?)")
             .unwrap();
         statement.bind(1, dt.timestamp()).unwrap();
         statement.bind(2, *temperature).unwrap();
+        statement.bind(3, upload_time.timestamp()).unwrap();
         loop {
             match statement.next() {
                 Ok(sqlite::State::Done) => break,
@@ -43,11 +44,11 @@ impl Database {
     fn create_tables(&mut self) {
         self.connection
             .execute("create table if not exists predictions (
-            id integer primary key,
-            \
-                      dt timestamp not null,
-            temperature integer not null
-        )")
+                id integer primary key,
+                dt timestamp not null,
+                temperature integer not null,
+                upload_time timestamp not null
+            )")
             .unwrap();
     }
 }
@@ -79,6 +80,8 @@ fn fetch_local_response() -> String {
 }
 
 fn main() {
+    let utc: DateTime<UTC> = UTC::now();
+
     let mut database = Database::new("db.sqlite");
     database.create_tables();
     // let buf = fetch_json_response();
@@ -99,7 +102,7 @@ fn main() {
 
             let dt = timestamp + Duration::minutes(minutes_after_midnight as i64);
 
-            database.insert(&dt, &temperature);
+            database.insert(&dt, &temperature, &utc);
         }
     }
 }
