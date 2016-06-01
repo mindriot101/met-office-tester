@@ -4,6 +4,7 @@ extern crate hyper;
 extern crate rustc_serialize;
 extern crate chrono;
 extern crate sqlite;
+extern crate docopt;
 
 use std::io::Read;
 use hyper::Client;
@@ -11,6 +12,24 @@ use rustc_serialize::json;
 use std::fs::File;
 use chrono::*;
 use std::env;
+use docopt::Docopt;
+
+const USAGE: &'static str = "
+Usage:
+    tempmonitor [options] <output>
+    tempmonitor (--help | --version)
+
+Options:
+    -h, --help          Show this message
+    --version           Show this version
+    -R, --recreate      Recreate the database tables
+";
+
+#[derive(RustcDecodable)]
+struct Args {
+    arg_output: String,
+    flag_recreate: bool,
+}
 
 struct Database {
     connection: sqlite::Connection,
@@ -80,9 +99,25 @@ fn fetch_local_response() -> String {
 }
 
 fn main() {
+    let argv = || env::args();
+    let args: Args = Docopt::new(USAGE)
+        .and_then(|d| d.argv(argv().into_iter()).decode())
+        .unwrap_or_else(|e| e.exit());
+
+    let db_name = args.arg_output;
+    let recreate = args.flag_recreate;
+
+    println!("Rendering to database \"{}\"", db_name.as_str());
+    if recreate {
+        println!("Recreating database from scratch");
+    }
+
     let utc: DateTime<UTC> = UTC::now();
 
-    let mut database = Database::new("db.sqlite");
+    let mut database = Database::new(db_name.as_str());
+    if recreate {
+        database.drop_tables();
+    }
     database.create_tables();
     // let buf = fetch_json_response();
     let buf = fetch_local_response();
