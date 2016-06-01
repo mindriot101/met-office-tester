@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate log;
 extern crate hyper;
 extern crate rustc_serialize;
 extern crate chrono;
@@ -13,6 +15,7 @@ use libtempmonitor::database::Database;
 use libtempmonitor::data_source::FetchData;
 use libtempmonitor::data_source::json::JsonSource;
 use libtempmonitor::data_source::file::FileSource;
+use libtempmonitor::logging;
 
 const USAGE: &'static str = "
 Usage:
@@ -48,6 +51,8 @@ fn fetch_local_response() -> String {
 }
 
 fn main() {
+    logging::init().unwrap();
+
     let argv = || env::args();
     let args: Args = Docopt::new(USAGE)
         .and_then(|d| d.argv(argv().into_iter()).decode())
@@ -56,18 +61,22 @@ fn main() {
     let db_name = args.arg_output;
     let recreate = args.flag_recreate;
 
-    println!("Rendering to database \"{}\"", db_name.as_str());
+    info!("Rendering to database \"{}\"", db_name.as_str());
     if recreate {
-        println!("Recreating database from scratch");
+        info!("Recreating database from scratch");
     }
 
     let utc: DateTime<UTC> = UTC::now();
+    debug!("Current time: {}", &utc);
 
     let mut database = Database::new(db_name.as_str());
     if recreate {
+        debug!("Dropping tables");
         database.drop_tables();
     }
+    debug!("Creating tables");
     database.create_tables();
+
     // let buf = fetch_json_response();
     let buf = fetch_local_response();
 
