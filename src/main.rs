@@ -40,12 +40,14 @@ fn timestamp_to_dt(timestamp: &str) -> ParseResult<DateTime<UTC>> {
 }
 
 fn fetch_json_response() -> String {
+    info!("Fetching remote response");
     let api_key = env::var("API_KEY").unwrap();
     let location_id = env::var("LOCATION_ID").unwrap();
     JsonSource::new(api_key, location_id).data()
 }
 
 fn fetch_local_response() -> String {
+    info!("Fetching local response");
     let filename = "testdata/response.json";
     FileSource::new(&filename).data()
 }
